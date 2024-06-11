@@ -43,8 +43,8 @@ fn main() -> std::io::Result<()> {
             let mut shell_nix = File::create("shell.nix")?;
             let mut default_nix = File::create("default.nix")?;
             build_nix.write_all(Build {}.render().unwrap().as_bytes())?;
-            shell_nix.write_all(Default { channel }.render().unwrap().as_bytes())?;
-            default_nix.write_all(Shell {}.render().unwrap().as_bytes())?;
+            shell_nix.write_all(Shell {}.render().unwrap().as_bytes())?;
+            default_nix.write_all(Default { channel }.render().unwrap().as_bytes())?;
         }
     }
     Ok(())
