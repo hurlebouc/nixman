@@ -6,7 +6,7 @@ use clap::{Parser, Subcommand};
 /// A fictional versioning CLI
 #[derive(Debug, Parser)] // requires `derive` feature
 // #[command(name = "git")]
-#[command(about = "A Nix Manager", long_about = None)]
+#[command(about = "A Nix Manager", long_about = None, version)]
 struct Cli {
     #[command(subcommand)]
     command: Commands,
