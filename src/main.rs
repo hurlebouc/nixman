@@ -1,4 +1,8 @@
-use std::{fs::File, io::Write};
+use std::{
+    fs::File,
+    io::{self, Write},
+    process::Command,
+};
 
 use askama::Template;
 use clap::{Parser, Subcommand};
@@ -19,6 +23,9 @@ enum Commands {
         /// Optional channel
         #[arg(short, long, default_value = "nixos-unstable")]
         channel: String,
+    },
+    Code {
+        path: String,
     },
 }
 #[derive(Template)]
@@ -45,6 +52,16 @@ fn main() -> std::io::Result<()> {
             build_nix.write_all(Build {}.render().unwrap().as_bytes())?;
             shell_nix.write_all(Shell {}.render().unwrap().as_bytes())?;
             default_nix.write_all(Default { channel }.render().unwrap().as_bytes())?;
+        }
+        Commands::Code { path } => {
+            let exit_status = Command::new("nix-shell")
+                .arg(format!("{}/shell.nix", path))
+                .arg("--run")
+                .arg(format!("code {}", path))
+                .status()?;
+            if !exit_status.success() {
+                return Err(io::Error::other("VSCode launched failed"));
+            }
         }
     }
     Ok(())
