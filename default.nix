@@ -1,0 +1,14 @@
+ let
+   nixpkgs = fetchTarball "https://github.com/NixOS/nixpkgs/tarball/nixos-unstable";
+   pkgs = import nixpkgs { config = {}; overlays = []; };
+   build = pkgs.callPackage ./build.nix {};
+ in
+ {
+   build = build;
+   shell = pkgs.mkShellNoCC {
+     inputsFrom = [ build ];
+     packages = [
+      pkgs.nixpkgs-fmt
+     ];
+   };
+ }
