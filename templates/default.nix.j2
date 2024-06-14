@@ -7,5 +7,12 @@
    build = build;
    shell = pkgs.mkShellNoCC {
      inputsFrom = [ build ];
+     packages = [
+      {% for package in packages %}
+        {{ package.name() }}
+      {% endfor %}
+     ];
+     {% for (key, value) in shell_attrs %}
+     {% endfor %}
    };
  }

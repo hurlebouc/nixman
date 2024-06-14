@@ -1,4 +1,7 @@
+mod types;
+
 use std::{
+    collections::HashMap,
     fs::File,
     io::{self, Write},
     process::Command,
@@ -23,6 +26,10 @@ enum Commands {
         /// Optional channel
         #[arg(short, long, default_value = "nixos-unstable")]
         channel: String,
+
+        /// Optional language
+        #[command(subcommand)]
+        language: Option<types::Language>,
     },
     Code {
         path: String,
@@ -36,6 +43,8 @@ struct Build {}
 #[template(path = "default.nix.j2")]
 struct Default {
     channel: String,
+    packages: Vec<types::Package>,
+    shell_attrs: HashMap<String, String>,
 }
 
 #[derive(Template)]
@@ -45,13 +54,39 @@ struct Shell {}
 fn main() -> std::io::Result<()> {
     let args = Cli::parse();
     match args.command {
-        Commands::Init { channel } => {
+        Commands::Init { channel, language } => {
             let mut build_nix = File::create("build.nix")?;
             let mut shell_nix = File::create("shell.nix")?;
             let mut default_nix = File::create("default.nix")?;
             build_nix.write_all(Build {}.render().unwrap().as_bytes())?;
             shell_nix.write_all(Shell {}.render().unwrap().as_bytes())?;
-            default_nix.write_all(Default { channel }.render().unwrap().as_bytes())?;
+            default_nix.write_all(
+                Default {
+                    channel,
+                    packages: {
+                        let mut packages = match language {
+                            Some(types::Language::Rust) => vec![],
+                            None => vec![],
+                        };
+                        packages.push(types::Package("pkgs.nixpkgs-fmt".to_string()));
+                        packages
+                    },
+                    shell_attrs: match language {
+                        Some(_) => {
+                            let mut attrs = HashMap::new();
+                            attrs.insert(
+                                "RUST_SRC_PATH".to_string(),
+                                "\"${pkgs.rustPlatform.rustLibSrc}\"".to_string(),
+                            );
+                            attrs
+                        }
+                        None => HashMap::new(),
+                    },
+                }
+                .render()
+                .unwrap()
+                .as_bytes(),
+            )?;
         }
         Commands::Code { path } => {
             let exit_status = Command::new("nix-shell")

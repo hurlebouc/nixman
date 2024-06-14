@@ -11,6 +11,7 @@ in
     inputsFrom = [ build ];
     packages = [
       pkgs.nixpkgs-fmt
+      pkgs.git
     ];
   };
 }
