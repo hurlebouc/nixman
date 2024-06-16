@@ -1,4 +1,4 @@
-{ lib, fetchFromGitHub, rustPlatform }:
+{ lib, rustPlatform }:
 
 let
   fs = lib.fileset;
