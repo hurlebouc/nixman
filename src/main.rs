@@ -39,6 +39,9 @@ enum Commands {
 #[derive(Template)]
 #[template(path = "build.nix.j2")]
 struct Build {}
+#[derive(Template)]
+#[template(path = "build_rust.nix.j2")]
+struct BuildRust {}
 
 #[derive(Template)]
 #[template(path = "gitignore.j2")]
@@ -67,7 +70,13 @@ fn main() -> std::io::Result<()> {
             let mut shell_nix = File::create("shell.nix")?;
             let mut default_nix = File::create("default.nix")?;
             let mut gitignore = File::create(".gitignore")?;
-            build_nix.write_all(Build {}.render().unwrap().as_bytes())?;
+            build_nix.write_all(
+                match language {
+                    Some(types::Language::Rust) => BuildRust {}.render().unwrap(),
+                    None => Build {}.render().unwrap(),
+                }
+                .as_bytes(),
+            )?;
             shell_nix.write_all(Shell {}.render().unwrap().as_bytes())?;
             default_nix.write_all(
                 Default {
