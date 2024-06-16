@@ -2,6 +2,7 @@ mod types;
 
 use std::{
     collections::HashMap,
+    ffi::OsString,
     fs::File,
     io::{self, Write},
     process::Command,
@@ -40,6 +41,12 @@ enum Commands {
 struct Build {}
 
 #[derive(Template)]
+#[template(path = "gitignore.j2")]
+struct Gitignore {
+    ignores: Vec<String>,
+}
+
+#[derive(Template)]
 #[template(path = "default.nix.j2")]
 struct Default {
     channel: String,
@@ -55,9 +62,11 @@ fn main() -> std::io::Result<()> {
     let args = Cli::parse();
     match args.command {
         Commands::Init { channel, language } => {
+            println!("Init nix...");
             let mut build_nix = File::create("build.nix")?;
             let mut shell_nix = File::create("shell.nix")?;
             let mut default_nix = File::create("default.nix")?;
+            let mut gitignore = File::create(".gitignore")?;
             build_nix.write_all(Build {}.render().unwrap().as_bytes())?;
             shell_nix.write_all(Shell {}.render().unwrap().as_bytes())?;
             default_nix.write_all(
@@ -87,6 +96,36 @@ fn main() -> std::io::Result<()> {
                 .unwrap()
                 .as_bytes(),
             )?;
+            gitignore.write_all(
+                Gitignore {
+                    ignores: match language {
+                        Some(types::Language::Rust) => vec!["/target".to_string()],
+                        None => vec![],
+                    },
+                }
+                .render()
+                .unwrap()
+                .as_bytes(),
+            )?;
+
+            let mut cmd_str = String::new();
+            cmd_str.push_str("echo 'git init' && git init");
+            cmd_str.push_str("&& echo 'git add *.nix' && git add *.nix");
+            if let Some(types::Language::Rust) = language {
+                cmd_str.push_str("&& echo 'cargo init' && cargo init --bin");
+                cmd_str.push_str("&& echo 'cargo build' && cargo build");
+                cmd_str.push_str("&& echo 'git add rust' && git add src Cargo.toml Cargo.lock");
+            }
+            cmd_str.push_str("&& echo 'git add .gitignore' && git add .gitignore");
+            cmd_str.push_str(&format!(
+                "&& echo 'git commit' && git commit -m \"{}\"",
+                std::env::args().collect::<Vec<String>>().join(" ")
+            ));
+
+            println!("Entering nix...");
+            let mut cmd = Command::new("nix-shell");
+            cmd.arg("--run").arg(cmd_str);
+            cmd.status()?;
         }
         Commands::Code { path } => {
             let exit_status = Command::new("nix-shell")
