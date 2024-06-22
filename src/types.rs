@@ -12,4 +12,5 @@ impl Package {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Subcommand)]
 pub enum Language {
     Rust,
+    Go,
 }

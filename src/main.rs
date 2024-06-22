@@ -2,16 +2,18 @@ mod types;
 
 use std::{
     collections::HashMap,
+    env::current_dir,
     ffi::OsString,
     fs::File,
-    io::{self, Write},
+    io::{self, stdin, stdout, Write},
     process::Command,
 };
 
 use askama::Template;
 use clap::{Parser, Subcommand};
+use regex::Regex;
 
-/// A fictional versioning CLI
+/// A Nix Manager for developers
 #[derive(Debug, Parser)] // requires `derive` feature
 // #[command(name = "git")]
 #[command(about = "A Nix Manager", long_about = None, version)]
@@ -44,6 +46,16 @@ struct Build {}
 struct BuildRust {}
 
 #[derive(Template)]
+#[template(path = "build_go.nix.j2")]
+struct BuildGo {
+    name: String,
+}
+
+#[derive(Template)]
+#[template(path = "main.go.j2")]
+struct MainGo {}
+
+#[derive(Template)]
 #[template(path = "gitignore.j2")]
 struct Gitignore {
     ignores: Vec<String>,
@@ -61,11 +73,52 @@ struct Default {
 #[template(path = "shell.nix.j2")]
 struct Shell {}
 
+fn check_word(s: &str) -> bool {
+    let re = Regex::new(r"^[a-zA-Z0-9]+$").unwrap();
+    re.is_match(s)
+}
+
+fn check_path(s: &str) -> bool {
+    let re = Regex::new(r"^[a-zA-Z0-9.\/]+$").unwrap();
+    re.is_match(s)
+}
+
+fn ask_line(question: &str) -> std::io::Result<String> {
+    //print!("{}", question);
+    stdout().write_all(question.as_bytes())?;
+    stdout().flush()?;
+    let mut answer = String::new();
+    stdin().read_line(&mut answer)?;
+    Ok(answer.trim().to_string())
+}
+
+fn ask_word(question: &str) -> std::io::Result<String> {
+    let res = ask_line(question)?;
+    if !check_word(&res) {
+        Err(std::io::Error::other("Expect word input"))
+    } else {
+        Ok(res)
+    }
+}
+
+fn ask_path(question: &str) -> std::io::Result<String> {
+    let res = ask_line(question)?;
+    if !check_path(&res) {
+        Err(std::io::Error::other("Expect path input"))
+    } else {
+        Ok(res)
+    }
+}
+
 fn main() -> std::io::Result<()> {
     let args = Cli::parse();
     match args.command {
         Commands::Init { channel, language } => {
             println!("Init nix...");
+            let name = current_dir()?
+                .file_name()
+                .map(|os| os.to_string_lossy().to_string())
+                .unwrap_or_else(|| ask_word("Name: ").unwrap());
             let mut build_nix = File::create("build.nix")?;
             let mut shell_nix = File::create("shell.nix")?;
             let mut default_nix = File::create("default.nix")?;
@@ -73,6 +126,7 @@ fn main() -> std::io::Result<()> {
             build_nix.write_all(
                 match language {
                     Some(types::Language::Rust) => BuildRust {}.render().unwrap(),
+                    Some(types::Language::Go) => BuildGo { name: name.clone() }.render().unwrap(),
                     None => Build {}.render().unwrap(),
                 }
                 .as_bytes(),
@@ -84,6 +138,7 @@ fn main() -> std::io::Result<()> {
                     packages: {
                         let mut packages = match language {
                             Some(types::Language::Rust) => vec![],
+                            Some(types::Language::Go) => vec![],
                             None => vec![],
                         };
                         packages.push(types::Package("pkgs.nixpkgs-fmt".to_string()));
@@ -109,6 +164,7 @@ fn main() -> std::io::Result<()> {
                 Gitignore {
                     ignores: match language {
                         Some(types::Language::Rust) => vec!["/target".to_string()],
+                        Some(types::Language::Go) => vec![],
                         None => vec![],
                     },
                 }
@@ -120,10 +176,21 @@ fn main() -> std::io::Result<()> {
             let mut cmd_str = String::new();
             cmd_str.push_str("echo 'git init' && git init");
             cmd_str.push_str("&& echo 'git add *.nix' && git add *.nix");
-            if let Some(types::Language::Rust) = language {
-                cmd_str.push_str("&& echo 'cargo init' && cargo init --bin");
-                cmd_str.push_str("&& echo 'cargo build' && cargo build");
-                cmd_str.push_str("&& echo 'git add rust' && git add src Cargo.toml Cargo.lock");
+            match language {
+                Some(types::Language::Rust) => {
+                    cmd_str.push_str("&& echo 'cargo init' && cargo init --bin");
+                    cmd_str.push_str("&& echo 'cargo build' && cargo build");
+                    cmd_str.push_str("&& echo 'git add rust' && git add src Cargo.toml Cargo.lock");
+                }
+                Some(types::Language::Go) => {
+                    let mut main_go = File::create("main.go")?;
+                    main_go.write_all(MainGo {}.render().unwrap().as_bytes())?;
+                    let path = ask_path(&format!("Access path (ex. github.com/plop/{}): ", &name))?;
+                    cmd_str.push_str(&format!("&& echo 'go mod init' && go mod init {}", path));
+                    cmd_str.push_str("&& echo 'go mod tidy' && go mod tidy");
+                    cmd_str.push_str("&& echo 'git add go' && git add main.go go.mod");
+                }
+                None => {}
             }
             cmd_str.push_str("&& echo 'git add .gitignore' && git add .gitignore");
             cmd_str.push_str(&format!(
