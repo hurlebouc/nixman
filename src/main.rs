@@ -203,6 +203,15 @@ fn main() -> std::io::Result<()> {
             println!("Entering nix...");
             let mut cmd = Command::new("nix-shell");
             cmd.arg("--run").arg(cmd_str);
+            match language {
+                Some(types::Language::Rust) => {
+                    cmd.arg("-p");
+                    cmd.arg("git");
+                    cmd.arg("cargo");
+                }
+                Some(types::Language::Go) => {}
+                None => {}
+            }
             cmd.status()?;
         }
         Commands::Code { path } => {
