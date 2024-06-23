@@ -155,7 +155,22 @@ fn main() -> std::io::Result<()> {
                             );
                             attrs
                         }
-                        Some(types::Language::Go) => HashMap::new(),
+                        Some(types::Language::Go) => {
+                            let mut attrs = HashMap::new();
+                            attrs.insert(
+                                "GOPATH".to_string(),
+                                "\"${PROJECT_ROOT}/gohome/go\"".to_string(),
+                            );
+                            attrs.insert(
+                                "GOCACHE".to_string(),
+                                "\"${PROJECT_ROOT}/gohome/cache\"".to_string(),
+                            );
+                            attrs.insert(
+                                "GOENV".to_string(),
+                                "\"${PROJECT_ROOT}/gohome/env\"".to_string(),
+                            );
+                            attrs
+                        }
                         None => HashMap::new(),
                     },
                 }
@@ -167,7 +182,7 @@ fn main() -> std::io::Result<()> {
                 Gitignore {
                     ignores: match language {
                         Some(types::Language::Rust) => vec!["/target".to_string()],
-                        Some(types::Language::Go) => vec![],
+                        Some(types::Language::Go) => vec!["/gohome".to_string()],
                         None => vec![],
                     },
                 }
