@@ -3,7 +3,6 @@ mod types;
 use std::{
     collections::HashMap,
     env::current_dir,
-    ffi::OsString,
     fs::File,
     io::{self, stdin, stdout, Write},
     process::Command,
@@ -12,6 +11,7 @@ use std::{
 use askama::Template;
 use clap::{Parser, Subcommand};
 use regex::Regex;
+use types::Package;
 
 /// A Nix Manager for developers
 #[derive(Debug, Parser)] // requires `derive` feature
@@ -67,7 +67,7 @@ struct Gitignore {
 #[template(path = "default.nix.j2")]
 struct Default {
     channel: String,
-    packages: Vec<types::Package>,
+    shell_packages: Vec<types::Package>,
     shell_attrs: HashMap<String, String>,
 }
 
@@ -137,17 +137,17 @@ fn main() -> std::io::Result<()> {
             default_nix.write_all(
                 Default {
                     channel,
-                    packages: {
+                    shell_packages: {
                         let mut packages = match language {
-                            Some(types::Language::Rust) => vec![],
-                            Some(types::Language::Go) => vec![],
+                            Some(types::Language::Rust) => vec![Package("git".to_string())],
+                            Some(types::Language::Go) => vec![Package("git".to_string())],
                             None => vec![],
                         };
-                        packages.push(types::Package("pkgs.nixpkgs-fmt".to_string()));
+                        packages.push(types::Package("nixpkgs-fmt".to_string()));
                         packages
                     },
                     shell_attrs: match language {
-                        Some(_) => {
+                        Some(types::Language::Rust) => {
                             let mut attrs = HashMap::new();
                             attrs.insert(
                                 "RUST_SRC_PATH".to_string(),
@@ -155,6 +155,7 @@ fn main() -> std::io::Result<()> {
                             );
                             attrs
                         }
+                        Some(types::Language::Go) => HashMap::new(),
                         None => HashMap::new(),
                     },
                 }
@@ -202,6 +203,7 @@ fn main() -> std::io::Result<()> {
 
             println!("Entering nix...");
             let mut cmd = Command::new("nix-shell");
+            cmd.arg("--pure");
             cmd.arg("--run").arg(cmd_str);
             match language {
                 Some(types::Language::Rust) => {
@@ -209,7 +211,11 @@ fn main() -> std::io::Result<()> {
                     cmd.arg("git");
                     cmd.arg("cargo");
                 }
-                Some(types::Language::Go) => {}
+                Some(types::Language::Go) => {
+                    cmd.arg("-p");
+                    cmd.arg("git");
+                    cmd.arg("go");
+                }
                 None => {}
             }
             cmd.status()?;
