@@ -37,6 +37,8 @@ enum Commands {
     Code {
         path: String,
     },
+    Build,
+    Install,
 }
 #[derive(Template)]
 #[template(path = "build.nix.j2")]
@@ -211,6 +213,24 @@ fn main() -> std::io::Result<()> {
                 .status()?;
             if !exit_status.success() {
                 return Err(io::Error::other("VSCode launched failed"));
+            }
+        }
+        Commands::Build => {
+            let exit_status = Command::new("nix-build").arg("-A").arg("build").status()?;
+            if !exit_status.success() {
+                return Err(io::Error::other("Error building project"));
+            }
+        }
+        Commands::Install => {
+            let exit_status = Command::new("nix-env")
+                .arg("-f")
+                .arg(".")
+                .arg("--install")
+                .arg("-A")
+                .arg("build")
+                .status()?;
+            if !exit_status.success() {
+                return Err(io::Error::other("Error installing project"));
             }
         }
     }
