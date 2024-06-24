@@ -220,15 +220,13 @@ fn main() -> std::io::Result<()> {
             let mut cmd = Command::new("nix-shell");
             cmd.arg("--pure");
             cmd.arg("--run").arg(cmd_str);
+            cmd.arg("-p");
+            cmd.arg("git");
             match language {
                 Some(types::Language::Rust) => {
-                    cmd.arg("-p");
-                    cmd.arg("git");
                     cmd.arg("cargo");
                 }
                 Some(types::Language::Go) => {
-                    cmd.arg("-p");
-                    cmd.arg("git");
                     cmd.arg("go");
                 }
                 None => {}
