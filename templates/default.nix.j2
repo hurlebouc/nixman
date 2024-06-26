@@ -2,7 +2,7 @@
    nixpkgs = fetchTarball "https://github.com/NixOS/nixpkgs/tarball/{{ channel }}";
    pkgs = import nixpkgs { config = {}; overlays = []; };
    build = pkgs.callPackage ./build.nix {};
-   #PROJECT_ROOT = builtins.getEnv "PWD";
+   HOME = builtins.getEnv "HOME";
    PROJECT_ROOT = builtins.toString ./.;
  in
  {

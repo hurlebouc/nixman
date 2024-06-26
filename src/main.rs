@@ -158,16 +158,14 @@ fn main() -> std::io::Result<()> {
                         Some(types::Language::Go) => {
                             let mut attrs = HashMap::new();
                             attrs.insert(
-                                "GOPATH".to_string(),
-                                "\"${PROJECT_ROOT}/gohome/go\"".to_string(),
-                            );
-                            attrs.insert(
-                                "GOCACHE".to_string(),
-                                "\"${PROJECT_ROOT}/gohome/cache\"".to_string(),
-                            );
-                            attrs.insert(
-                                "GOENV".to_string(),
-                                "\"${PROJECT_ROOT}/gohome/env\"".to_string(),
+                                "shellHook".to_string(),
+                                "''
+                                goversion=$(go version)
+                                export GOPATH=$HOME/gohome/\"$goversion\"/go
+                                export GOCACHE=$HOME/gohome/\"$goversion\"/cache
+                                export GOENV=$HOME/gohome/\"$goversion\"/env
+                                ''"
+                                .to_string(),
                             );
                             attrs
                         }
