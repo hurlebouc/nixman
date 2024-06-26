@@ -3,7 +3,7 @@ mod types;
 use std::{
     collections::HashMap,
     env::current_dir,
-    fs::File,
+    fs::{self, File},
     io::{self, stdin, stdout, Write},
     process::Command,
 };
@@ -56,6 +56,22 @@ struct BuildGo {
 #[derive(Template)]
 #[template(path = "main.go.j2")]
 struct MainGo {}
+
+#[derive(Template)]
+#[template(path = "main.rs.j2")]
+struct MainRs {}
+
+#[derive(Template)]
+#[template(path = "Cargo.toml.j2")]
+struct CargoToml {
+    name: String,
+}
+
+#[derive(Template)]
+#[template(path = "Cargo.lock.j2")]
+struct CargoLock {
+    name: String,
+}
 
 #[derive(Template)]
 #[template(path = "gitignore.j2")]
@@ -194,7 +210,23 @@ fn main() -> std::io::Result<()> {
             cmd_str.push_str("&& echo 'git add *.nix' && git add *.nix");
             match language {
                 Some(types::Language::Rust) => {
-                    cmd_str.push_str("&& echo 'cargo init' && cargo init --bin");
+                    fs::create_dir("src")?;
+                    let mut main_rs = File::create("src/main.rs")?;
+                    main_rs.write_all(MainRs {}.render().unwrap().as_bytes())?;
+                    let mut cargo_toml = File::create("Cargo.toml")?;
+                    cargo_toml.write_all(
+                        CargoToml { name: name.clone() }
+                            .render()
+                            .unwrap()
+                            .as_bytes(),
+                    )?;
+                    let mut cargo_lock = File::create("Cargo.lock")?;
+                    cargo_lock.write_all(
+                        CargoLock { name: name.clone() }
+                            .render()
+                            .unwrap()
+                            .as_bytes(),
+                    )?;
                     cmd_str.push_str("&& echo 'cargo build' && cargo build");
                     cmd_str.push_str("&& echo 'git add rust' && git add src Cargo.toml Cargo.lock");
                 }
@@ -218,15 +250,9 @@ fn main() -> std::io::Result<()> {
             let mut cmd = Command::new("nix-shell");
             cmd.arg("--pure");
             cmd.arg("--run").arg(cmd_str);
-            cmd.arg("-p");
-            cmd.arg("git");
             match language {
-                Some(types::Language::Rust) => {
-                    cmd.arg("cargo");
-                }
-                Some(types::Language::Go) => {
-                    cmd.arg("go");
-                }
+                Some(types::Language::Rust) => {}
+                Some(types::Language::Go) => {}
                 None => {}
             }
             cmd.status()?;

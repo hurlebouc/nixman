@@ -7,7 +7,7 @@
  in
  {
    build = build;
-   shell = pkgs.mkShellNoCC {
+   shell = pkgs.mkShell {
      inputsFrom = [ build ];
      packages = [
       {% for package in shell_packages %}
