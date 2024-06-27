@@ -35,7 +35,7 @@ enum Commands {
         language: Option<types::Language>,
     },
     Code {
-        path: String,
+        path: Option<String>,
     },
     Build,
     Install,
@@ -258,6 +258,7 @@ fn main() -> std::io::Result<()> {
             cmd.status()?;
         }
         Commands::Code { path } => {
+            let path = path.unwrap_or(".".to_string());
             let exit_status = Command::new("nix-shell")
                 .arg(format!("{}/shell.nix", path))
                 .arg("--run")
