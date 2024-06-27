@@ -155,7 +155,9 @@ fn main() -> std::io::Result<()> {
                     channel,
                     shell_packages: {
                         let mut packages = match language {
-                            Some(types::Language::Rust) => vec![Package("git".to_string())],
+                            Some(types::Language::Rust) => {
+                                vec![Package("git".to_string()), Package("rustfmt".to_string())]
+                            }
                             Some(types::Language::Go) => vec![Package("git".to_string())],
                             None => vec![],
                         };
