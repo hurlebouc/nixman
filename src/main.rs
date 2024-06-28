@@ -198,7 +198,7 @@ fn main() -> std::io::Result<()> {
                 Gitignore {
                     ignores: match language {
                         Some(types::Language::Rust) => vec!["/target".to_string()],
-                        Some(types::Language::Go) => vec!["/gohome".to_string()],
+                        Some(types::Language::Go) => vec![],
                         None => vec![],
                     },
                 }
