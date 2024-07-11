@@ -159,7 +159,7 @@ fn main() -> std::io::Result<()> {
                                 vec![Package("git".to_string()), Package("rustfmt".to_string())]
                             }
                             Some(types::Language::Go) => vec![Package("git".to_string())],
-                            None => vec![],
+                            None => vec![Package("git".to_string())],
                         };
                         packages.push(types::Package("nixpkgs-fmt".to_string()));
                         packages
