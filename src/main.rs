@@ -179,9 +179,10 @@ fn main() -> std::io::Result<()> {
                                 "shellHook".to_string(),
                                 "''
                                 goversion=$(go version)
-                                export GOPATH=$HOME/gohome/\"$goversion\"/go
-                                export GOCACHE=$HOME/gohome/\"$goversion\"/cache
-                                export GOENV=$HOME/gohome/\"$goversion\"/env
+                                goversion=''${goversion// /_}
+                                export GOPATH=\"$HOME/gohome/$goversion/go\"
+                                export GOCACHE=\"$HOME/gohome/$goversion/cache\"
+                                export GOENV=\"$HOME/gohome/$goversion/env\"
                                 export PATH=$GOPATH/bin:$PATH
                                 ''"
                                 .to_string(),
