@@ -175,6 +175,12 @@ fn main() -> std::io::Result<()> {
                         }
                         Some(types::Language::Go) => {
                             let mut attrs = HashMap::new();
+                            // enable debugging
+                            attrs.insert(
+                                "hardeningDisable".to_string(),
+                                "[ \"fortify\" ]".to_string(),
+                            );
+                            // set go environment variables
                             attrs.insert(
                                 "shellHook".to_string(),
                                 "''
