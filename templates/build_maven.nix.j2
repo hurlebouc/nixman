@@ -1,0 +1,32 @@
+{ lib, fetchFromGitHub, jre, makeWrapper, maven, libxml2, runCommand, jdk }:
+
+let
+  sources = ./.;
+  pom_version_cmd = runCommand "get pom version" { } ''${libxml2}/bin/xmllint --xpath "string(//*[local-name()='project' and namespace-uri()='http://maven.apache.org/POM/4.0.0']/*[local-name()='version' and namespace-uri()='http://maven.apache.org/POM/4.0.0'])" ${sources}/pom.xml > $out'';
+  pom_name_cmd = runCommand "get pom name" { } ''${libxml2}/bin/xmllint --xpath "string(//*[local-name()='project' and namespace-uri()='http://maven.apache.org/POM/4.0.0']/*[local-name()='artifactId' and namespace-uri()='http://maven.apache.org/POM/4.0.0'])" ${sources}/pom.xml > $out'';
+  pom_version = lib.strings.trim (builtins.readFile pom_version_cmd);
+  pom_name = lib.strings.trim (builtins.readFile pom_name_cmd);
+  java_runtime = jdk;
+in
+
+maven.buildMavenPackage rec {
+  pname = pom_name;
+  version = pom_version;
+
+  src = sources;
+
+  mvnJdk = java_runtime;
+
+  mvnHash = "sha256-CYoV+SebayfEfkRSc3uN8YXieIOUk7yuN15my4LOl1A=";
+
+  nativeBuildInputs = [ makeWrapper java_runtime ];
+
+  installPhase = ''
+    mkdir -p $out/bin $out/share/${pname}
+
+    install -Dm644 target/${pname}-${version}-jar-with-dependencies.jar $out/share/${pname}/${pname}.jar
+
+    makeWrapper ${jre}/bin/java $out/bin/${pname} \
+      --add-flags "-jar $out/share/${pname}/${pname}.jar"
+  '';
+}

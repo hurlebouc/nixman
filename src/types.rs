@@ -13,4 +13,5 @@ impl Package {
 pub enum Language {
     Rust,
     Go,
+    Maven,
 }

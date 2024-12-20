@@ -46,6 +46,9 @@ struct Build {}
 #[derive(Template)]
 #[template(path = "build_rust.nix.j2")]
 struct BuildRust {}
+#[derive(Template)]
+#[template(path = "build_maven.nix.j2")]
+struct BuildMaven {}
 
 #[derive(Template)]
 #[template(path = "build_go.nix.j2")]
@@ -56,6 +59,11 @@ struct BuildGo {
 #[derive(Template)]
 #[template(path = "main.go.j2")]
 struct MainGo {}
+#[derive(Template)]
+#[template(path = "Main.java.j2")]
+struct MainJava {
+    package: String,
+}
 
 #[derive(Template)]
 #[template(path = "main.rs.j2")]
@@ -65,6 +73,12 @@ struct MainRs {}
 #[template(path = "Cargo.toml.j2")]
 struct CargoToml {
     name: String,
+}
+#[derive(Template)]
+#[template(path = "pom.xml.j2")]
+struct PomXml {
+    name: String,
+    package: String,
 }
 
 #[derive(Template)]
@@ -144,6 +158,7 @@ fn main() -> std::io::Result<()> {
             build_nix.write_all(
                 match language {
                     Some(types::Language::Rust) => BuildRust {}.render().unwrap(),
+                    Some(types::Language::Maven) => BuildMaven {}.render().unwrap(),
                     Some(types::Language::Go) => BuildGo { name: name.clone() }.render().unwrap(),
                     None => Build {}.render().unwrap(),
                 }
@@ -158,6 +173,7 @@ fn main() -> std::io::Result<()> {
                             Some(types::Language::Rust) => {
                                 vec![Package("git".to_string()), Package("rustfmt".to_string())]
                             }
+                            Some(types::Language::Maven) => vec![Package("git".to_string())],
                             Some(types::Language::Go) => vec![Package("git".to_string())],
                             None => vec![Package("git".to_string())],
                         };
@@ -195,6 +211,7 @@ fn main() -> std::io::Result<()> {
                             );
                             attrs
                         }
+                        Some(types::Language::Maven) => HashMap::new(),
                         None => HashMap::new(),
                     },
                 }
@@ -206,6 +223,7 @@ fn main() -> std::io::Result<()> {
                 Gitignore {
                     ignores: match language {
                         Some(types::Language::Rust) => vec!["/target".to_string()],
+                        Some(types::Language::Maven) => vec!["/target".to_string()],
                         Some(types::Language::Go) => vec![],
                         None => vec![],
                     },
@@ -248,6 +266,36 @@ fn main() -> std::io::Result<()> {
                     cmd_str.push_str("&& echo 'go mod tidy' && go mod tidy");
                     cmd_str.push_str("&& echo 'git add go' && git add main.go go.mod");
                 }
+                Some(types::Language::Maven) => {
+                    let package = ask_path("Package : ")?;
+                    let package_path = package.replace(".", "/");
+                    fs::create_dir_all(format!("src/main/java/{}", package_path))?;
+                    let mut main_java =
+                        File::create(format!("src/main/java/{}/Main.java", package_path))?;
+                    main_java.write_all(
+                        MainJava {
+                            package: package.clone(),
+                        }
+                        .render()
+                        .unwrap()
+                        .as_bytes(),
+                    )?;
+                    let mut pom_xml = File::create("pom.xml")?;
+                    pom_xml.write_all(
+                        PomXml {
+                            name: name.clone(),
+                            package: package.clone(),
+                        }
+                        .render()
+                        .unwrap()
+                        .as_bytes(),
+                    )?;
+
+                    cmd_str.push_str(&format!(
+                        "&& echo 'git add maven' && git add pom.xml src/main/java/{}/Main.java",
+                        package_path
+                    ));
+                }
                 None => {}
             }
             cmd_str.push_str("&& echo 'git add .gitignore' && git add .gitignore");
@@ -261,6 +309,7 @@ fn main() -> std::io::Result<()> {
             cmd.arg("--pure");
             cmd.arg("--run").arg(cmd_str);
             match language {
+                Some(types::Language::Maven) => {}
                 Some(types::Language::Rust) => {}
                 Some(types::Language::Go) => {}
                 None => {}
