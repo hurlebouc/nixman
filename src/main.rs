@@ -96,7 +96,6 @@ struct Gitignore {
 #[derive(Template)]
 #[template(path = "default.nix.j2")]
 struct Default {
-    channel: String,
     shell_packages: Vec<types::Package>,
     shell_attrs: HashMap<String, String>,
 }
@@ -151,6 +150,21 @@ fn main() -> std::io::Result<()> {
                 .file_name()
                 .map(|os| os.to_string_lossy().to_string())
                 .unwrap_or_else(|| ask_word("Name: ").unwrap());
+
+            let exit_status = Command::new("nix-shell")
+                .args(["-p", "npins"])
+                .args([
+                    "--run",
+                    &format!(
+                        "npins init --bare && npins add --name nixpkgs channel {}",
+                        channel
+                    ),
+                ])
+                .status()?;
+            if !exit_status.success() {
+                return Err(io::Error::other("cannot init npins"));
+            }
+
             let mut build_nix = File::create("build.nix")?;
             let mut shell_nix = File::create("shell.nix")?;
             let mut default_nix = File::create("default.nix")?;
@@ -167,7 +181,6 @@ fn main() -> std::io::Result<()> {
             shell_nix.write_all(Shell {}.render().unwrap().as_bytes())?;
             default_nix.write_all(
                 Default {
-                    channel,
                     shell_packages: {
                         let mut packages = match language {
                             Some(types::Language::Rust) => {
@@ -236,6 +249,7 @@ fn main() -> std::io::Result<()> {
             let mut cmd_str = String::new();
             cmd_str.push_str("echo 'git init' && git init");
             cmd_str.push_str("&& echo 'git add *.nix' && git add *.nix");
+            cmd_str.push_str("&& echo 'git add npins' && git add npins");
             match language {
                 Some(types::Language::Rust) => {
                     fs::create_dir("src")?;
