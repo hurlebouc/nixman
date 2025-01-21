@@ -110,7 +110,7 @@ fn check_word(s: &str) -> bool {
 }
 
 fn check_path(s: &str) -> bool {
-    let re = Regex::new(r"^[a-zA-Z0-9.\/]+$").unwrap();
+    let re = Regex::new(r"^[a-zA-Z0-9._\-\/]+$").unwrap();
     re.is_match(s)
 }
 
