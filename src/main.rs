@@ -321,7 +321,7 @@ fn main() -> std::io::Result<()> {
             let exit_status = Command::new("nix-shell")
                 .arg(format!("{}/shell.nix", path))
                 .arg("--run")
-                .arg(format!("code {}", path))
+                .arg(format!("code --wait {}", path))
                 .status()?;
             if !exit_status.success() {
                 return Err(io::Error::other("VSCode launched failed"));
