@@ -1,6 +1,7 @@
 let
-  nixpkgs = fetchTarball "https://github.com/NixOS/nixpkgs/tarball/nixos-unstable";
-  pkgs = import nixpkgs { config = { }; overlays = [ ]; };
+  npins = import ./npins;
+  system = builtins.currentSystem;
+  pkgs = import npins.nixpkgs { inherit system; config = {}; overlays = []; };
   build = pkgs.callPackage ./build.nix { };
 in
 {
