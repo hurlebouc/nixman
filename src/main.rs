@@ -9,7 +9,8 @@ use std::{
 };
 
 use askama::Template;
-use clap::{Parser, Subcommand};
+use clap::{CommandFactory, Parser, Subcommand};
+use clap_complete::generate;
 use regex::Regex;
 use types::Package;
 
@@ -34,11 +35,104 @@ enum Commands {
         #[command(subcommand)]
         language: Option<types::Language>,
     },
-    Code {
-        path: Option<String>,
-    },
+    /// Launch VSCode within Nix
+    Code { path: Option<String> },
+    /// Build current Nix derivation
     Build,
+    /// Install Nix derivation
     Install,
+    /// Complete command
+    ///
+    /// See each sub-command's help for details on how to use the generated script.
+    Completion {
+        /// Shell in which completion occurs
+        #[command(subcommand)]
+        shell: ShellComplete,
+    },
+}
+
+#[derive(Debug, Subcommand)]
+enum ShellComplete {
+    /// Generate the autocompletion script for the bash shell.
+    ///
+    /// This script depends on the 'bash-completion' package.
+    /// If it is not installed already, you can install it via your OS's package manager.
+    ///
+    /// To load completions in your current shell session:
+    ///
+    /// 	source <(nixman completion bash)
+    ///
+    /// To load completions for every new session, execute once:
+    ///
+    /// #### Linux:
+    ///
+    /// 	nixman completion bash > /etc/bash_completion.d/nixman
+    ///
+    /// #### macOS:
+    ///
+    /// 	nixman completion bash > $(brew --prefix)/etc/bash_completion.d/nixman
+    ///
+    /// You will need to start a new shell for this setup to take effect.
+    Bash,
+    /// Generate the autocompletion script for the elvish shell.
+    Elvish,
+    /// Generate the autocompletion script for the fish shell.
+    ///
+    /// To load completions in your current shell session:
+    ///
+    ///     nixman completion fish | source
+    ///
+    /// To load completions for every new session, execute once:
+    ///
+    ///     nixman completion fish > ~/.config/fish/completions/nixman.fish
+    ///
+    /// You will need to start a new shell for this setup to take effect.
+    Fish,
+
+    /// Generate the autocompletion script for powershell.
+    ///
+    /// To load completions in your current shell session:
+    ///
+    ///     nixman completion powershell | Out-String | Invoke-Expression
+    ///
+    /// To load completions for every new session, add the output of the above command
+    /// to your powershell profile.
+    Powershell,
+
+    /// Generate the autocompletion script for the zsh shell.
+    ///
+    /// If shell completion is not already enabled in your environment you will need
+    /// to enable it.  You can execute the following once:
+    ///
+    /// 	echo "autoload -U compinit; compinit" >> ~/.zshrc
+    ///
+    /// To load completions in your current shell session:
+    ///
+    /// 	source <(nixman completion zsh)
+    ///
+    /// To load completions for every new session, execute once:
+    ///
+    /// #### Linux:
+    ///
+    /// 	nixman completion zsh > "${fpath[1]}/_nixman"
+    ///
+    /// #### macOS:
+    ///
+    /// 	nixman completion zsh > $(brew --prefix)/share/zsh/site-functions/_nixman
+    ///
+    /// You will need to start a new shell for this setup to take effect.
+    Zsh,
+}
+impl ShellComplete {
+    fn get_clap_version(&self) -> clap_complete::Shell {
+        match self {
+            ShellComplete::Bash => clap_complete::Shell::Bash,
+            ShellComplete::Elvish => clap_complete::Shell::Elvish,
+            ShellComplete::Fish => clap_complete::Shell::Fish,
+            ShellComplete::Powershell => clap_complete::Shell::PowerShell,
+            ShellComplete::Zsh => clap_complete::Shell::Zsh,
+        }
+    }
 }
 #[derive(Template)]
 #[template(path = "build.nix.j2")]
@@ -358,6 +452,14 @@ fn main() -> std::io::Result<()> {
             if !exit_status.success() {
                 return Err(io::Error::other("Error installing project"));
             }
+        }
+        Commands::Completion { shell } => {
+            generate(
+                shell.get_clap_version(),
+                &mut Cli::command(),
+                "nixman",
+                &mut io::stdout(),
+            );
         }
     }
     Ok(())
